@@ -11,8 +11,7 @@ __Example:__
 Certificate for Ashok Kumar would be stored in `certs/ashok_kumar.jpg`.
 
 ### How to use
-* Go to config.ini and set the image height and width, under `[image]` section.
-* Update the other sections to match the headers in the timesheet. See example below
+* Go to config.ini and update the other sections to match the headers in the timesheet. See example below
 * Where width is not provided, script will automatically center the text.
 * Where left or right offset is provided, text will be offset accordingly. Offset doesn't work when width is explicitly given.
 * Width and font size are required fields.

@@ -67,13 +67,11 @@ with open(filepath) as csvfile:
         # Credits:
         # https://stackoverflow.com/questions/1970807/center-middle-align-text-with-pil
 
-        image_width = int(config['image']['width'])
-        image_height = int(config['image']['height'])
-        W, H = (image_width, image_height)
+        W, H = img.size
         logging.info({
             "image": {
-                "width": image_width,
-                "height": image_height
+                "width": W,
+                "height": H
             }
         })
         for key, value in row.items():
