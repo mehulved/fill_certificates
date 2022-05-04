@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+import json
 
-from flask import Flask, jsonify, make_response
+from flask import Flask, jsonify, make_response, request
 from logging.config import dictConfig
 
 dictConfig({
@@ -45,3 +46,29 @@ def project(project_id):
             return jsonify(project_list[item])
     res = make_response("", 204)
     return res
+
+
+@app.post("/projects")
+def create_project():
+    app.logger.info({"request": request.form.get('project_name')})
+    if request.form['project_name']:
+        project_name = json.loads(request.form.get('project_name'))
+        project_list.append({"id": 3, "name": project_name})
+        return jsonify(project_list)
+    else:
+        res = make_response("Project Name cannot be empty", 400)
+        return res
+
+
+@app.put("/projects/<int:project_id>")
+def update_project(project_id):
+    app.logger.info({"request": request.form.get('project_name')})
+    if request.form['project_name']:
+        project_name = json.loads(request.form.get('project_name'))
+        for item in range(len(project_list)):
+            if project_list[item]["id"] == project_id:
+                project_list[item]['name']=project_name
+        return jsonify(project_list)
+    else:
+        res = make_response("Project Name cannot be empty", 400)
+        return res
