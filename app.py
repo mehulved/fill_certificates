@@ -68,6 +68,8 @@ def update_project(project_id):
         for item in range(len(project_list)):
             if project_list[item]["id"] == project_id:
                 project_list[item]['name']=project_name
+            else:
+                res = make_response("Project ID is incorrect", 400)
         return jsonify(project_list)
     else:
         res = make_response("Project Name cannot be empty", 400)
