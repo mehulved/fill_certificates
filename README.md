@@ -44,9 +44,8 @@ height=030
 font_size=20
 ```
 
-###References
+### References
 * Font: https://www.wfonts.com/search?kwd=serif
 * Code: https://stackoverflow.com/questions/16373425/add-text-on-image-using-pil
-* 
 * Docs: https://pillow.readthedocs.io/en/stable/reference/Image.html
 * Similar project: https://crondev.blog/2014/06/16/make-a-certificate-creator-using-python/
