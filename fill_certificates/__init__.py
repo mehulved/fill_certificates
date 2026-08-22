@@ -5,6 +5,7 @@ fill_certificates package for certificate generation.
 from .config import ConfigManager, EventConfig, FieldConfig
 from .generator import CertificateGenerator
 from .processor import EventProcessor
+from .gdrive import GoogleDriveUploader
 
 __all__ = [
     "ConfigManager",
@@ -12,4 +13,5 @@ __all__ = [
     "FieldConfig",
     "CertificateGenerator",
     "EventProcessor",
+    "GoogleDriveUploader",
 ]

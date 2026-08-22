@@ -7,8 +7,9 @@ A modular, extensible Python package and CLI tool to batch fill certificate imag
 - **Per-Event Directory Isolation**: Each event under `events/<event_name>/` contains its own `config.ini`, `templates/` folder, `data/` CSV files, and output `certs/`.
 - **Flexible Field Configuration**: Fine-tune field positions (height, width, centering offsets), font sizes, custom font files, and text colors per field or globally in `config.ini`.
 - **Multi-Event Batch Processing**: Process a single event or automatically discover and process all event directories at once.
+- **Optional Google Drive Upload**: Automatically upload generated certificates to a specified Google Drive folder, make them publicly readable via link, and update each participant's row in the CSV data file with their shareable link.
 - **Pillow 10+ Support**: Modern PIL text bounding box calculations for accurate centering and text alignment.
-- **Automated Test Suite**: Unit tests included for configuration parsing, certificate rendering, and batch processing.
+- **Automated Test Suite**: Unit tests included for configuration parsing, certificate rendering, Google Drive integration, and batch processing.
 
 ---
 
@@ -20,7 +21,8 @@ fill_certificates/
 │   ├── __init__.py
 │   ├── config.py             # ConfigManager, EventConfig, FieldConfig
 │   ├── generator.py          # CertificateGenerator (Pillow image drawing)
-│   └── processor.py          # EventProcessor (CSV reader and batch runner)
+│   ├── processor.py          # EventProcessor (CSV reader and batch runner)
+│   └── gdrive.py             # GoogleDriveUploader (Google Drive API client)
 ├── events/                    # Event subdirectories
 │   ├── d2d2026/               # Sample event folder
 │   │   ├── config.ini         # Event configuration
@@ -43,7 +45,8 @@ fill_certificates/
 └── tests/                     # Unit test suite
     ├── test_config.py
     ├── test_generator.py
-    └── test_processor.py
+    ├── test_processor.py
+    └── test_gdrive.py
 ```
 
 ---
@@ -60,6 +63,13 @@ output_dir=certs
 font_path=news-serif.ttf
 text_color=20,40,80
 name_field=name
+
+[google_drive]
+upload_gdrive=true
+folder_id=YOUR_GOOGLE_DRIVE_FOLDER_ID
+credentials_file=credentials.json
+url_column=certificate_url
+public=true
 
 [name]
 height=300
@@ -96,15 +106,25 @@ python main.py --list-events
 python main.py --event d2d2026
 ```
 
-Or pass a custom event directory path:
-```bash
-python main.py --event-dir events/d2d2026
-```
-
 ### 3. Process All Events
 ```bash
 python main.py --all
 ```
+
+### 4. Enable Google Drive Upload via CLI
+```bash
+python main.py --event marathon_2026 --upload-gdrive --gdrive-folder-id <FOLDER_ID> --gdrive-credentials path/to/credentials.json
+```
+
+---
+
+## Google Drive Setup
+
+1. Create a Service Account or OAuth 2.0 Credentials in the Google Cloud Console with Google Drive API enabled.
+2. Download the JSON credentials file (e.g., `credentials.json`).
+3. Share your target Google Drive folder with the Service Account email address (give `Editor` permission).
+4. Run `python main.py --event <event_name> --upload-gdrive`.
+5. The generated public view links will automatically be saved into the `certificate_url` column in your CSV data file!
 
 ---
 

@@ -1,5 +1,5 @@
 """
-Batch processing logic for event certificate generation.
+Batch processing logic for event certificate generation and optional Google Drive uploads.
 """
 
 import csv
@@ -11,16 +11,17 @@ from typing import Dict, Any, List, Optional
 
 from .config import ConfigManager, EventConfig
 from .generator import CertificateGenerator
+from .gdrive import GoogleDriveUploader
 
 logger = logging.getLogger(__name__)
 
 
 class EventProcessor:
-    """Manages CSV data loading and batch processing of certificates for events."""
+    """Manages CSV data loading, batch certificate generation, and optional Google Drive uploads."""
 
     @staticmethod
     def process_event(event_config: EventConfig, run_id: Optional[str] = None) -> Dict[str, Any]:
-        """Process a single event by reading its CSV data and creating output certificates."""
+        """Process a single event by reading its CSV data, creating output certificates, and updating CSV links."""
         if not run_id:
             run_id = str(uuid.uuid4())
 
@@ -34,25 +35,58 @@ class EventProcessor:
                 f"Data file '{event_config.data_file}' not found for event '{event_config.event_name}'."
             )
 
+        uploader = None
+        if event_config.upload_gdrive:
+            logger.info("Google Drive upload enabled. Initializing Uploader...")
+            uploader = GoogleDriveUploader(credentials_file=event_config.gdrive_credentials_file)
+
+        rows: List[Dict[str, Any]] = []
+        fieldnames: List[str] = []
+
+        with open(event_config.data_file, mode="r", encoding="utf-8-sig") as csv_file:
+            reader = csv.DictReader(csv_file, delimiter=",", quotechar='"')
+            fieldnames = list(reader.fieldnames or [])
+            rows = list(reader)
+
+        url_col = event_config.gdrive_url_column
+        if event_config.upload_gdrive and url_col not in fieldnames:
+            fieldnames.append(url_col)
+
         processed_count = 0
         success_count = 0
         error_count = 0
         output_files: List[str] = []
+        uploaded_links: List[str] = []
 
-        with open(event_config.data_file, mode="r", encoding="utf-8-sig") as csv_file:
-            reader = csv.DictReader(csv_file, delimiter=",", quotechar='"')
-            for row in reader:
-                processed_count += 1
-                try:
-                    out_path = CertificateGenerator.generate_certificate(
-                        data_row=row,
-                        event_config=event_config,
+        for row in rows:
+            processed_count += 1
+            try:
+                out_path = CertificateGenerator.generate_certificate(
+                    data_row=row,
+                    event_config=event_config,
+                )
+                success_count += 1
+                output_files.append(out_path)
+
+                if uploader:
+                    web_link = uploader.upload_file(
+                        file_path=out_path,
+                        folder_id=event_config.gdrive_folder_id,
+                        make_public=event_config.gdrive_public,
                     )
-                    success_count += 1
-                    output_files.append(out_path)
-                except Exception as e:
-                    error_count += 1
-                    logger.error(f"Error generating certificate for row {row}: {e}", exc_info=True)
+                    row[url_col] = web_link
+                    uploaded_links.append(web_link)
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error processing row {row}: {e}", exc_info=True)
+
+        # Write updated CSV back if Google Drive links were generated
+        if event_config.upload_gdrive and uploaded_links:
+            logger.info(f"Updating CSV data file '{event_config.data_file}' with generated Google Drive links in column '{url_col}'...")
+            with open(event_config.data_file, mode="w", encoding="utf-8", newline="") as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                writer.writeheader()
+                writer.writerows(rows)
 
         summary = {
             "event_name": event_config.event_name,
@@ -62,6 +96,7 @@ class EventProcessor:
             "success": success_count,
             "error": error_count,
             "output_files": output_files,
+            "uploaded_links": uploaded_links,
         }
 
         logger.info(

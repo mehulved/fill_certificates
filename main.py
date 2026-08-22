@@ -62,6 +62,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--config",
         help="Override path to config.ini file"
     )
+    parser.add_argument(
+        "--upload-gdrive",
+        action="store_true",
+        help="Upload generated certificates to Google Drive"
+    )
+    parser.add_argument(
+        "--gdrive-folder-id",
+        help="Target folder ID in Google Drive"
+    )
+    parser.add_argument(
+        "--gdrive-credentials",
+        help="Path to Google Drive OAuth or Service Account credentials JSON file"
+    )
     return parser
 
 
@@ -98,6 +111,9 @@ def main():
                 template_override=args.certificatefile,
                 data_override=args.datafile,
                 output_override=args.outputpath,
+                upload_gdrive_override=True if args.upload_gdrive else None,
+                gdrive_folder_id_override=args.gdrive_folder_id,
+                gdrive_credentials_override=args.gdrive_credentials,
             )
             res = EventProcessor.process_event(cfg, run_id=run_id)
             total_errors += res.get("error", 0)
@@ -121,6 +137,9 @@ def main():
         template_override=args.certificatefile,
         data_override=args.datafile,
         output_override=args.outputpath,
+        upload_gdrive_override=True if args.upload_gdrive else None,
+        gdrive_folder_id_override=args.gdrive_folder_id,
+        gdrive_credentials_override=args.gdrive_credentials,
     )
 
     try:

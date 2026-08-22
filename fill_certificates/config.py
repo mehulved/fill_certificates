@@ -51,6 +51,11 @@ class EventConfig:
     font_path: str = "news-serif.ttf"
     text_color: Tuple[int, int, int] = (0, 0, 0)
     name_field: str = "name"
+    upload_gdrive: bool = False
+    gdrive_folder_id: Optional[str] = None
+    gdrive_credentials_file: Optional[str] = None
+    gdrive_url_column: str = "certificate_url"
+    gdrive_public: bool = True
     fields: Dict[str, FieldConfig] = field(default_factory=dict)
 
 
@@ -78,6 +83,9 @@ class ConfigManager:
         template_override: Optional[str] = None,
         data_override: Optional[str] = None,
         output_override: Optional[str] = None,
+        upload_gdrive_override: Optional[bool] = None,
+        gdrive_folder_id_override: Optional[str] = None,
+        gdrive_credentials_override: Optional[str] = None,
     ) -> EventConfig:
         """Build EventConfig by loading config.ini from event_dir and resolving defaults."""
         event_dir = os.path.abspath(event_dir)
@@ -105,6 +113,13 @@ class ConfigManager:
             event_section = dict(config.items("event"))
         elif config.has_section("general"):
             event_section = dict(config.items("general"))
+
+        # Google drive settings section [google_drive] or [gdrive]
+        gdrive_section = {}
+        if config.has_section("google_drive"):
+            gdrive_section = dict(config.items("google_drive"))
+        elif config.has_section("gdrive"):
+            gdrive_section = dict(config.items("gdrive"))
 
         # Helper to make relative path absolute against event_dir or subfolders (templates/, data/)
         def resolve_rel_path(path_str: Optional[str], subfolder: str = "") -> Optional[str]:
@@ -183,6 +198,18 @@ class ConfigManager:
         text_color = parse_color(text_color_raw)
         name_field = event_section.get("name_field", "name")
 
+        # Resolve Google Drive parameters
+        upload_gdrive = upload_gdrive_override
+        if upload_gdrive is None:
+            upload_gdrive = gdrive_section.get("upload_gdrive", event_section.get("upload_gdrive", "false")).lower() in ("true", "1", "yes")
+
+        gdrive_folder_id = gdrive_folder_id_override or gdrive_section.get("folder_id", event_section.get("gdrive_folder_id"))
+        gdrive_credentials_raw = gdrive_credentials_override or gdrive_section.get("credentials_file", event_section.get("gdrive_credentials_file", "credentials.json"))
+        gdrive_credentials_file = resolve_rel_path(gdrive_credentials_raw) or os.path.abspath(gdrive_credentials_raw)
+
+        gdrive_url_column = gdrive_section.get("url_column", event_section.get("gdrive_url_column", "certificate_url"))
+        gdrive_public = gdrive_section.get("public", event_section.get("gdrive_public", "true")).lower() in ("true", "1", "yes")
+
         # Resolve field-level configurations
         fields: Dict[str, FieldConfig] = {}
         ignored_sections = {"event", "general", "image"}
@@ -230,5 +257,10 @@ class ConfigManager:
             font_path=font_path,
             text_color=text_color,
             name_field=name_field,
+            upload_gdrive=upload_gdrive,
+            gdrive_folder_id=gdrive_folder_id,
+            gdrive_credentials_file=gdrive_credentials_file,
+            gdrive_url_column=gdrive_url_column,
+            gdrive_public=gdrive_public,
             fields=fields,
         )
