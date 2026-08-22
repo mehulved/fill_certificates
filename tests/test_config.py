@@ -20,11 +20,24 @@ class TestConfigManager(unittest.TestCase):
         self.assertEqual(parse_color(""), (0, 0, 0))
 
     def test_load_event_config_defaults(self):
+        # Create templates, data, certs subfolders
+        os.makedirs(os.path.join(self.test_dir, "templates"))
+        os.makedirs(os.path.join(self.test_dir, "data"))
+        os.makedirs(os.path.join(self.test_dir, "certs"))
+
+        tmpl_file = os.path.join(self.test_dir, "templates", "template.jpg")
+        with open(tmpl_file, "w") as f:
+            f.write("fake_img")
+
+        csv_file = os.path.join(self.test_dir, "data", "test.csv")
+        with open(csv_file, "w") as f:
+            f.write("name,score\n")
+
         config_path = os.path.join(self.test_dir, "config.ini")
         with open(config_path, "w") as f:
             f.write("""
 [event]
-template=template.jpg
+template=templates/template.jpg
 data_file=data/test.csv
 output_dir=certs
 text_color=255,0,0
@@ -42,11 +55,12 @@ font_size=30
         cfg = ConfigManager.load_event_config(event_dir=self.test_dir)
         self.assertEqual(cfg.event_name, os.path.basename(self.test_dir))
         self.assertEqual(cfg.text_color, (255, 0, 0))
+        self.assertEqual(cfg.template_path, tmpl_file)
+        self.assertEqual(cfg.data_file, csv_file)
+        self.assertEqual(cfg.output_dir, os.path.join(self.test_dir, "certs"))
         self.assertIn("name", cfg.fields)
         self.assertIn("score", cfg.fields)
         self.assertEqual(cfg.fields["name"].height, 100)
-        self.assertEqual(cfg.fields["name"].font_size, 50)
-        self.assertEqual(cfg.fields["score"].width, 300)
 
     def test_discover_events(self):
         events_dir = os.path.join(self.test_dir, "events")

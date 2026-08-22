@@ -106,39 +106,50 @@ class ConfigManager:
         elif config.has_section("general"):
             event_section = dict(config.items("general"))
 
-        # Helper to make relative path absolute against event_dir if file exists
-        def resolve_rel_path(path_str: Optional[str]) -> Optional[str]:
+        # Helper to make relative path absolute against event_dir or subfolders (templates/, data/)
+        def resolve_rel_path(path_str: Optional[str], subfolder: str = "") -> Optional[str]:
             if not path_str:
                 return None
             if os.path.isabs(path_str):
                 return path_str
+            # Check direct relative to event_dir
             event_rel = os.path.join(event_dir, path_str)
             if os.path.exists(event_rel):
                 return event_rel
+            # Check inside subfolder (e.g. templates/ or data/)
+            if subfolder:
+                sub_rel = os.path.join(event_dir, subfolder, os.path.basename(path_str))
+                if os.path.exists(sub_rel):
+                    return sub_rel
             return path_str
 
         # Resolve template path
-        template_path = template_override or resolve_rel_path(event_section.get("template"))
+        template_path = template_override or resolve_rel_path(event_section.get("template"), "templates")
         if not template_path or not os.path.exists(template_path):
-            # Search candidate paths
-            candidates = [
+            templates_dir = os.path.join(event_dir, "templates")
+            template_candidates = []
+            if os.path.exists(templates_dir):
+                template_candidates.extend(glob.glob(os.path.join(templates_dir, "*.jpg")))
+                template_candidates.extend(glob.glob(os.path.join(templates_dir, "*.png")))
+                template_candidates.extend(glob.glob(os.path.join(templates_dir, "*.jpeg")))
+
+            template_candidates.extend([
+                os.path.join(event_dir, "templates", "template.jpg"),
+                os.path.join(event_dir, "templates", "certificate-template.jpg"),
                 os.path.join(event_dir, "template.jpg"),
-                os.path.join(event_dir, "template.png"),
                 os.path.join(event_dir, "certificate-template.jpg"),
-                os.path.join(event_dir, "certificate-template.png"),
                 os.path.abspath("certificate-template.jpg"),
-            ]
-            for candidate in candidates:
+            ])
+            for candidate in template_candidates:
                 if os.path.exists(candidate):
                     template_path = candidate
                     break
             if not template_path:
-                template_path = os.path.join(event_dir, "certificate-template.jpg")
+                template_path = os.path.join(event_dir, "templates", "template.jpg")
 
         # Resolve data file path
-        data_file = data_override or resolve_rel_path(event_section.get("data_file"))
+        data_file = data_override or resolve_rel_path(event_section.get("data_file"), "data")
         if not data_file or not os.path.exists(data_file):
-            # Search candidate paths in data/ directory or event_dir root
             data_dir = os.path.join(event_dir, "data")
             csv_files = glob.glob(os.path.join(data_dir, "*.csv")) if os.path.exists(data_dir) else []
             if csv_files:

@@ -4,7 +4,7 @@ A modular, extensible Python package and CLI tool to batch fill certificate imag
 
 ## Features
 
-- **Per-Event Directory Isolation**: All event assets (`config.ini`, template image, `data/` CSV files, and output `certs/`) live in dedicated subdirectories under `events/`.
+- **Per-Event Directory Isolation**: Each event under `events/<event_name>/` contains its own `config.ini`, `templates/` folder, `data/` CSV files, and output `certs/`.
 - **Flexible Field Configuration**: Fine-tune field positions (height, width, centering offsets), font sizes, custom font files, and text colors per field or globally in `config.ini`.
 - **Multi-Event Batch Processing**: Process a single event or automatically discover and process all event directories at once.
 - **Pillow 10+ Support**: Modern PIL text bounding box calculations for accurate centering and text alignment.
@@ -21,19 +21,21 @@ fill_certificates/
 │   ├── config.py             # ConfigManager, EventConfig, FieldConfig
 │   ├── generator.py          # CertificateGenerator (Pillow image drawing)
 │   └── processor.py          # EventProcessor (CSV reader and batch runner)
-├── events/                    # All event directories live here
-│   ├── default/               # Default event folder
-│   │   ├── config.ini
-│   │   ├── template.jpg
-│   │   ├── data/
-│   │   │   └── timesheet.csv
+├── events/                    # Event subdirectories
+│   ├── d2d2026/               # Sample event folder
+│   │   ├── config.ini         # Event configuration
+│   │   ├── templates/         # Event templates directory
+│   │   │   └── template.jpg
+│   │   ├── data/              # Event CSV data directory
+│   │   │   └── d2d2026.csv
 │   │   └── certs/             # Generated certificates output
-│   └── marathon_2026/         # Sample marathon event folder
+│   └── marathon_2026/
 │       ├── config.ini
-│       ├── template.jpg
+│       ├── templates/
+│       │   └── template.jpg
 │       ├── data/
-│       │   └── marathon.csv
-│       └── certs/             # Generated certificates output
+│       │   └── marathon_2026.csv
+│       └── certs/
 ├── main.py                    # CLI entry point
 ├── config.ini                 # Root configuration template
 ├── news-serif.ttf             # Font file
@@ -48,12 +50,12 @@ fill_certificates/
 
 ## Configuration Guide (`config.ini`)
 
-Each event directory under `events/` contains a `config.ini`:
+Each event directory under `events/<event_name>/` contains a `config.ini`:
 
 ```ini
 [event]
-template=template.jpg
-data_file=data/marathon.csv
+template=templates/template.jpg
+data_file=data/marathon_2026.csv
 output_dir=certs
 font_path=news-serif.ttf
 text_color=20,40,80
@@ -91,22 +93,17 @@ python main.py --list-events
 
 ### 2. Process a Specific Event
 ```bash
-python main.py --event marathon_2026
+python main.py --event d2d2026
 ```
 
 Or pass a custom event directory path:
 ```bash
-python main.py --event-dir events/marathon_2026
+python main.py --event-dir events/d2d2026
 ```
 
 ### 3. Process All Events
 ```bash
 python main.py --all
-```
-
-### 4. Run Default Event
-```bash
-python main.py
 ```
 
 ---
