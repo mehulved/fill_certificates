@@ -1,51 +1,120 @@
-# Fill Certificate
+# Fill Certificate Generator
 
-## Script to batch fill certificates
+A modular, extensible Python package and CLI tool to batch fill certificate image templates using participant CSV data.
 
-### How does it work?
-The script iterates through `data/timesheet.csv` and fills the value in the certificate template picked from `./certificate-template.jpg` and stores them in `certs/`. 
-Each certificate is stored with name of the participant.
+## Features
 
-__Example:__
+- **Per-Event Directory Isolation**: All event assets (`config.ini`, template image, `data/` CSV files, and output `certs/`) live in dedicated subdirectories under `events/`.
+- **Flexible Field Configuration**: Fine-tune field positions (height, width, centering offsets), font sizes, custom font files, and text colors per field or globally in `config.ini`.
+- **Multi-Event Batch Processing**: Process a single event or automatically discover and process all event directories at once.
+- **Pillow 10+ Support**: Modern PIL text bounding box calculations for accurate centering and text alignment.
+- **Automated Test Suite**: Unit tests included for configuration parsing, certificate rendering, and batch processing.
 
-Certificate for Ashok Kumar would be stored in `certs/ashok_kumar.jpg`.
+---
 
-### How to use
-* Go to config.ini and update the other sections to match the headers in the timesheet. See example below
-* Where width is not provided, script will automatically center the text.
-* Where left or right offset is provided, text will be offset accordingly. Offset doesn't work when width is explicitly given.
-* Width and font size are required fields.
-* Pass optional parameter --datafile to give path of your required datafile. It should be in csv format with header field.
-* Pass optional parameter --outputpath to give alternate output directory
-* Pass optional parameter --certificatefile to give path to the certificate file.
-__Example:__
-timesheet.csv
+## Directory Structure
+
+```text
+fill_certificates/
+├── fill_certificates/         # Modular Python package
+│   ├── __init__.py
+│   ├── config.py             # ConfigManager, EventConfig, FieldConfig
+│   ├── generator.py          # CertificateGenerator (Pillow image drawing)
+│   └── processor.py          # EventProcessor (CSV reader and batch runner)
+├── events/                    # All event directories live here
+│   ├── default/               # Default event folder
+│   │   ├── config.ini
+│   │   ├── template.jpg
+│   │   ├── data/
+│   │   │   └── timesheet.csv
+│   │   └── certs/             # Generated certificates output
+│   └── marathon_2026/         # Sample marathon event folder
+│       ├── config.ini
+│       ├── template.jpg
+│       ├── data/
+│       │   └── marathon.csv
+│       └── certs/             # Generated certificates output
+├── main.py                    # CLI entry point
+├── config.ini                 # Root configuration template
+├── news-serif.ttf             # Font file
+├── requirements.txt           # Python dependencies
+└── tests/                     # Unit test suite
+    ├── test_config.py
+    ├── test_generator.py
+    └── test_processor.py
 ```
-name,distance,time
-Ashok Kumar, 5 km, "2:00:00"
-```
-config.ini
-```
-[image]
-height=111
-width=111
+
+---
+
+## Configuration Guide (`config.ini`)
+
+Each event directory under `events/` contains a `config.ini`:
+
+```ini
+[event]
+template=template.jpg
+data_file=data/marathon.csv
+output_dir=certs
+font_path=news-serif.ttf
+text_color=20,40,80
+name_field=name
+
 [name]
-height=010
-width_offset_left=000
-width_offset_right=010
-font_size=40
+height=300
+font_size=56
+width_offset_left=0
+width_offset_right=0
+
+[category]
+height=420
+font_size=36
+
 [distance]
-width=040
-height=030
-font_size=20
+width=400
+height=520
+font_size=32
+
 [time]
-width=080
-height=030
-font_size=20
+width=800
+height=520
+font_size=32
 ```
 
-### References
-* Font: https://www.wfonts.com/search?kwd=serif
-* Code: https://stackoverflow.com/questions/16373425/add-text-on-image-using-pil
-* Docs: https://pillow.readthedocs.io/en/stable/reference/Image.html
-* Similar project: https://crondev.blog/2014/06/16/make-a-certificate-creator-using-python/
+---
+
+## Command Line Usage
+
+### 1. List Available Events
+```bash
+python main.py --list-events
+```
+
+### 2. Process a Specific Event
+```bash
+python main.py --event marathon_2026
+```
+
+Or pass a custom event directory path:
+```bash
+python main.py --event-dir events/marathon_2026
+```
+
+### 3. Process All Events
+```bash
+python main.py --all
+```
+
+### 4. Run Default Event
+```bash
+python main.py
+```
+
+---
+
+## Running Unit Tests
+
+Run the test suite using Python's `unittest`:
+
+```bash
+python3 -m unittest discover -s tests
+```

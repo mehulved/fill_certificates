@@ -1,74 +1,138 @@
 #!/usr/bin/env python
+"""
+Main CLI entry point for batch certificate generation.
+"""
 
-import csv
+import sys
+import os
 import argparse
 import logging
-from datetime import datetime
 import uuid
-from certificate import fill
+from datetime import datetime
+
+from fill_certificates import ConfigManager, EventProcessor
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("fill_certificates")
 
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Fill certificate templates from CSV data for single or multiple events."
+    )
+    parser.add_argument(
+        "--event", "-e",
+        help="Specify event name located in events/ directory (e.g., --event marathon_2026)"
+    )
+    parser.add_argument(
+        "--event-dir", "-d",
+        help="Specify custom event directory path containing config.ini, data/, certs/, template.jpg"
+    )
+    parser.add_argument(
+        "--all", "-a",
+        action="store_true",
+        help="Process all events discovered under events/ directory"
+    )
+    parser.add_argument(
+        "--list-events", "-l",
+        action="store_true",
+        help="List available event directories"
+    )
+    parser.add_argument(
+        "--events-root",
+        default="events",
+        help="Root directory for event folders (default: events/)"
+    )
+    parser.add_argument(
+        "--datafile",
+        help="Override path to input CSV file"
+    )
+    parser.add_argument(
+        "--outputpath",
+        help="Override output directory path for certificates"
+    )
+    parser.add_argument(
+        "--certificatefile",
+        help="Override path to certificate template image"
+    )
+    parser.add_argument(
+        "--config",
+        help="Override path to config.ini file"
+    )
+    return parser
 
 
-def setup_paths():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--datafile", help="Pass optional file path. Default: data/timesheet.csv")
-    parser.add_argument("--outputpath", help="Pass optional output path. Default: certs/")
-    parser.add_argument("--certificatefile", help="Pass optional certificate file. Default: ./certificate-template.jpg")
+def main():
+    parser = build_parser()
     args = parser.parse_args()
+    run_id = str(uuid.uuid4())
 
-    if args.datafile:
-        filepath = args.datafile
-    else:
-        filepath = f"data/timesheet.csv"
+    logger.info(f"Certificate generator started (Run ID: {run_id})")
 
-    if args.outputpath:
-        cert_path = args.outputpath
-    else:
-        cert_path = "certs"
+    # List events
+    if args.list_events:
+        events = ConfigManager.discover_events(args.events_root)
+        if events:
+            print(f"Discovered events in '{args.events_root}':")
+            for ev in events:
+                print(f" - {ev}")
+        else:
+            print(f"No event directories found in '{args.events_root}'.")
+        return 0
 
-    if args.certificatefile:
-        template = args.certificatefile
-    else:
-        template = "./certificate-template.jpg"
+    # Process all events
+    if args.all:
+        events = ConfigManager.discover_events(args.events_root)
+        if not events:
+            logger.warning(f"No events found in '{args.events_root}'.")
+            return 0
+        total_errors = 0
+        for ev in events:
+            ev_dir = os.path.join(args.events_root, ev)
+            cfg = ConfigManager.load_event_config(
+                event_dir=ev_dir,
+                config_file=args.config,
+                template_override=args.certificatefile,
+                data_override=args.datafile,
+                output_override=args.outputpath,
+            )
+            res = EventProcessor.process_event(cfg, run_id=run_id)
+            total_errors += res.get("error", 0)
+        return 1 if total_errors > 0 else 0
 
-    logger.info({
-        "timesheet": filepath,
-        "certificate_directory": cert_path,
-        "certificate_template": template
-    })
-    path_list = {
-        "timesheet": filepath,
-        "cert_path": cert_path,
-        "template": template
-    }
-    return path_list
+    # Resolve event directory for single run
+    target_dir = "events/default" if os.path.exists("events/default") else "."
+    if args.event_dir:
+        target_dir = args.event_dir
+    elif args.event:
+        # Check if events/<event> exists, otherwise treat as path
+        potential_dir = os.path.join(args.events_root, args.event)
+        if os.path.exists(potential_dir):
+            target_dir = potential_dir
+        else:
+            target_dir = args.event
+
+    cfg = ConfigManager.load_event_config(
+        event_dir=target_dir,
+        config_file=args.config,
+        template_override=args.certificatefile,
+        data_override=args.datafile,
+        output_override=args.outputpath,
+    )
+
+    try:
+        summary = EventProcessor.process_event(cfg, run_id=run_id)
+        logger.info(f"Run completed. Generated {summary['success']} certificates.")
+        if summary.get("error", 0) > 0:
+            return 1
+        return 0
+    except Exception as e:
+        logger.error(f"Execution failed: {e}", exc_info=True)
+        return 1
 
 
 if __name__ == "__main__":
-    # Logging
-    run_id = str(uuid.uuid4())
-    logger.info({
-        "status": "started",
-        "identifier": run_id,
-        "time": str(datetime.now())
-    })
-    # Paths
-    paths = setup_paths()
-    timesheet = paths["timesheet"]
-    certificate_template = paths["template"]
-    output_path = paths["cert_path"]
-    # Read data
-    with open(timesheet) as csvfile:
-        tsreader = csv.DictReader(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
-        for row in tsreader:
-            logger.info({"data": row, "time": str(datetime.now())})
-            fill(row, certificate_template, run_id, output_path)
-    # Finish
-    logger.info({
-        "status": "completed",
-        "identifier": run_id,
-        "time": str(datetime.now())
-    })
+    sys.exit(main())

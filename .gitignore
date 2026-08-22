@@ -1,4 +1,4 @@
-certs/*.jpg
-data/*.csv
+events/*
 *.jpg
 *.zip
+*.py[c,o]
